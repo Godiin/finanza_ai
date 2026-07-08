@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Livro-Razão — Controle Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --ink:#10141F;
+    --panel:#171D2C;
+    --panel-2:#1E2537;
+    --rule:#2A3145;
+    --rule-soft:#20263A;
+    --paper:#EDE7D9;
+    --paper-dim:#C9C4B6;
+    --muted:#8B92AA;
+    --brass:#C6A15B;
+    --brass-soft:rgba(198,161,91,0.14);
+    --debit:#BE5A4C;
+    --debit-soft:rgba(190,90,76,0.14);
+    --credit:#7DA089;
+    --credit-soft:rgba(125,160,137,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans',sans-serif;
+    min-height:100vh;
+  }
+  .num, .mono{
+    font-family:'IBM Plex Mono',monospace;
+    font-feature-settings:"tnum" 1;
+    font-variant-numeric:tabular-nums;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  ::selection{background:var(--brass-soft);color:var(--paper);}
+  a{color:inherit;}
+
+  #app{display:flex;min-height:100vh;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    width:216px;
+    flex-shrink:0;
+    background:linear-gradient(180deg,#12172400,#0000000a),var(--panel);
+    border-right:1px solid var(--rule);
+    padding:28px 0 20px;
+    display:flex;
+    flex-direction:column;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+  .brand{
+    padding:0 22px 22px;
+    border-bottom:1px solid var(--rule);
+    margin-bottom:6px;
+  }
+  .brand .mark{
+    width:34px;height:34px;border-radius:50%;
+    border:1.5px solid var(--brass);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--brass);
+    margin-bottom:10px;
+  }
+  .brand h1{font-size:18px;margin:0 0 2px;color:var(--paper);}
+  .brand p{font-size:11.5px;color:var(--muted);margin:0;letter-spacing:.03em;}
+
+  nav.tabs{flex:1;padding-top:8px;}
+  .tab{
+    position:relative;
+    display:flex;align-items:center;gap:10px;
+    padding:13px 22px 13px 26px;
+    color:var(--muted);
+    font-size:14px;
+    cursor:pointer;
+    border-left:3px solid transparent;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab .idx{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--rule);
+    width:16px;
+  }
+  .tab:hover{background:var(--panel-2);color:var(--paper);}
+  .tab.active{
+    background:var(--panel-2);
+    color:var(--brass);
+    border-left-color:var(--brass);
+  }
+  .tab.active .idx{color:var(--brass);}
+
+  .sidebar-foot{padding:14px 22px 0;border-top:1px solid var(--rule);margin-top:6px;}
+  .reset-btn{
+    background:none;border:1px solid var(--rule);color:var(--muted);
+    font-size:11.5px;padding:7px 10px;border-radius:6px;cursor:pointer;width:100%;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .reset-btn:hover{border-color:var(--debit);color:var(--debit);}
+  .sync-status{font-size:10.5px;color:var(--muted);margin-top:10px;display:flex;align-items:center;gap:6px;}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--credit);}
+  .sync-dot.err{background:var(--debit);}
+
+  /* ---------- MAIN ---------- */
+  main{flex:1;padding:30px 40px 60px;max-width:1180px;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;gap:24px;}
+  .topbar h2{font-size:26px;color:var(--paper);margin:0 0 4px;}
+  .topbar .sub{color:var(--muted);font-size:13.5px;margin:0;}
+
+  .banner{
+    background:var(--debit-soft);border:1px solid var(--debit);color:var(--paper);
+    padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:18px;
+    display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
+  }
+  .banner button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;}
+
+  /* stamp */
+  .stamp-wrap{width:104px;height:104px;flex-shrink:0;}
+  .stamp{transform:rotate(-8deg);}
+  .stamp-ring{fill:none;stroke-width:2;}
+  .stamp-text{font-family:'IBM Plex Mono',monospace;font-size:7.2px;letter-spacing:2.2px;}
+  .stamp-value{font-family:'Fraunces',serif;font-weight:600;}
+
+  section.view{display:none;}
+  section.view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .grid{display:grid;gap:16px;}
+  .grid.cards{grid-template-columns:repeat(4,1fr);margin-bottom:22px;}
+  @media(max-width:980px){.grid.cards{grid-template-columns:repeat(2,1fr);}}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:10px;
+    padding:16px 18px;
+  }
+  .card .label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .card .value{font-size:22px;color:var(--paper);}
+  .card .delta{font-size:12px;margin-top:6px;}
+  .up{color:var(--credit);}
+  .down{color:var(--debit);}
+
+  .panels{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;}
+  @media(max-width:980px){.panels{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:10px;
+    padding:20px;
+  }
+  .panel h3{font-size:14.5px;color:var(--paper);margin:0 0 14px;font-weight:600;}
+  .panel h3 span{color:var(--muted);font-weight:400;font-size:12px;}
+
+  /* forms */
+  .form-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+  .field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px;}
+  .field label{font-size:11px;color:var(--muted);letter-spacing:.03em;}
+  .field input,.field select{
+    background:var(--ink);
+    border:1px solid var(--rule);
+    color:var(--paper);
+    padding:9px 10px;
+    border-radius:6px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:13.5px;
+  }
+  .field input:focus,.field select:focus{outline:2px solid var(--brass);outline-offset:0;border-color:var(--brass);}
+  .btn{
+    background:var(--brass);
+    color:#1a1508;
+    border:none;
+    padding:10px 18px;
+    border-radius:6px;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    align-self:flex-end;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:.6;cursor:not-allowed;}
+  .btn.ghost{background:transparent;border:1px solid var(--rule);color:var(--muted);font-weight:500;}
+  .btn.ghost:hover{border-color:var(--paper);color:var(--paper);}
+  .btn.danger{background:transparent;color:var(--debit);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);padding:0 10px 8px;border-bottom:1px solid var(--rule);font-weight:500;
+  }
+  tbody td{padding:10px 10px;border-bottom:1px solid var(--rule-soft);color:var(--paper-dim);}
+  tbody tr:hover{background:var(--panel-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.amt{text-align:right;font-family:'IBM Plex Mono',monospace;}
+  .tag{
+    display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;
+    background:var(--rule-soft);color:var(--muted);
+  }
+  .row-del{background:none;border:none;color:var(--rule);cursor:pointer;font-size:15px;line-height:1;}
+  .row-del:hover{color:var(--debit);}
+
+  .empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center;border:1px dashed var(--rule);border-radius:8px;}
+
+  .progress-track{background:var(--rule-soft);border-radius:20px;height:8px;overflow:hidden;margin-top:8px;}
+  .progress-fill{height:100%;border-radius:20px;background:var(--brass);}
+  .progress-fill.over{background:var(--debit);}
+
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--rule-soft);}
+  .list-item:last-child{border-bottom:none;}
+
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+
+  .badge-type{font-size:10.5px;padding:2px 7px;border-radius:4px;letter-spacing:.03em;}
+  .badge-income{background:var(--credit-soft);color:var(--credit);}
+  .badge-expense{background:var(--debit-soft);color:var(--debit);}
+
+  .chart-box{position:relative;height:230px;}
+  .chart-box.small{height:190px;}
+
+  .invest-gain{font-family:'IBM Plex Mono',monospace;}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--rule);border-radius:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  .loading-screen{
+    position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:13px;letter-spacing:.05em;z-index:50;font-family:'IBM Plex Mono',monospace;
+    text-align:center;padding:20px;
+  }
+  .loading-screen .setup{max-width:480px;text-align:left;font-family:'IBM Plex Sans',sans-serif;letter-spacing:normal;}
+  .loading-screen .setup h3{color:var(--brass);font-family:'Fraunces',serif;font-size:18px;margin-bottom:10px;}
+  .loading-screen .setup code{background:var(--panel);padding:2px 6px;border-radius:4px;color:var(--brass);}
+  .loading-screen .setup ol{padding-left:20px;line-height:1.7;}
+
+  /* ---------- LOGIN ---------- */
+  .auth-screen{
+    position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;
+    z-index:40;padding:20px;
+  }
+  .auth-card{
+    width:100%;max-width:360px;background:var(--panel);border:1px solid var(--rule);border-radius:12px;
+    padding:32px 28px;
+  }
+  .auth-card .mark{
+    width:38px;height:38px;border-radius:50%;border:1.5px solid var(--brass);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;font-size:17px;color:var(--brass);margin-bottom:14px;
+  }
+  .auth-card h2{font-size:20px;margin:0 0 4px;color:var(--paper);}
+  .auth-card .sub{color:var(--muted);font-size:12.5px;margin:0 0 22px;}
+  .auth-card .field{margin-bottom:14px;}
+  .auth-card label{font-size:11px;color:var(--muted);letter-spacing:.03em;display:block;margin-bottom:5px;}
+  .auth-card input{
+    width:100%;background:var(--ink);border:1px solid var(--rule);color:var(--paper);
+    padding:10px 11px;border-radius:6px;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;
+  }
+  .auth-card input:focus{outline:2px solid var(--brass);outline-offset:0;border-color:var(--brass);}
+  .auth-card .btn{width:100%;margin-top:6px;}
+  .auth-toggle{
+    text-align:center;margin-top:16px;font-size:12.5px;color:var(--muted);
+  }
+  .auth-toggle button{
+    background:none;border:none;color:var(--brass);cursor:pointer;font-size:12.5px;
+    font-family:'IBM Plex Sans',sans-serif;text-decoration:underline;padding:0;
+  }
+  .auth-error{
+    background:var(--debit-soft);border:1px solid var(--debit);color:var(--paper);
+    padding:9px 11px;border-radius:6px;font-size:12.5px;margin-bottom:14px;display:none;
+  }
+  .auth-note{
+    background:var(--brass-soft);border:1px solid var(--brass);color:var(--paper);
+    padding:9px 11px;border-radius:6px;font-size:12.5px;margin-bottom:14px;display:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">CARREGANDO O LIVRO-RAZÃO…</div>
+
+<div class="auth-screen" id="authScreen" style="display:none;">
+  <div class="auth-card">
+    <div class="mark">§</div>
+    <h2 id="authTitle">Entrar</h2>
+    <p class="sub" id="authSub">Acesse seu Livro-Razão</p>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-note" id="authNote"></div>
+    <form id="authForm">
+      <div class="field">
+        <label>E-mail</label>
+        <input type="email" id="authEmail" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" id="authPassword" required autocomplete="current-password" minlength="6">
+      </div>
+      <button type="submit" class="btn" id="authSubmitBtn">Entrar</button>
+    </form>
+    <div class="auth-toggle">
+      <span id="authToggleText">Ainda não tem conta?</span>
+      <button type="button" id="authToggleBtn">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">§</div>
+      <h1>Livro-Razão</h1>
+      <p>FINANÇAS &amp; INVESTIMENTOS</p>
+    </div>
+    <nav class="tabs" id="tabs">
+      <div class="tab active" data-view="dashboard"><span class="idx">01</span>Painel</div>
+      <div class="tab" data-view="transactions"><span class="idx">02</span>Lançamentos</div>
+      <div class="tab" data-view="budget"><span class="idx">03</span>Orçamento</div>
+      <div class="tab" data-view="investments"><span class="idx">04</span>Investimentos</div>
+      <div class="tab" data-view="goals"><span class="idx">05</span>Metas</div>
+    </nav>
+    <div class="sidebar-foot">
+      <div id="userEmail" style="font-size:11px;color:var(--muted);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+      <button class="reset-btn" id="logoutBtn" style="margin-bottom:8px;">Sair</button>
+      <button class="reset-btn" id="resetBtn">Zerar todos os dados</button>
+      <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Conectado ao Supabase</span></div>
+    </div>
+  </aside>
+
+  <main>
+    <div id="bannerHost"></div>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="view active" data-view="dashboard">
+      <div class="topbar">
+        <div>
+          <h2>Painel geral</h2>
+          <p class="sub" id="dashSub">Resumo da sua vida financeira</p>
+        </div>
+        <div class="stamp-wrap">
+          <svg viewBox="0 0 100 100" class="stamp" id="stampSvg">
+            <defs>
+              <path id="stampCircle" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0"/>
+            </defs>
+            <circle class="stamp-ring" cx="50" cy="50" r="45" stroke="var(--brass)"/>
+            <circle class="stamp-ring" cx="50" cy="50" r="38" stroke="var(--brass)" stroke-width="1"/>
+            <text class="stamp-text" fill="var(--brass)">
+              <textPath href="#stampCircle" startOffset="2%">PATRIMÔNIO LÍQUIDO • SALDO ATUAL •</textPath>
+            </text>
+            <text x="50" y="46" text-anchor="middle" class="stamp-value" fill="var(--paper)" font-size="11" id="stampValue">R$0</text>
+            <text x="50" y="60" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" fill="var(--muted)" id="stampArrow">—</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="grid cards" id="dashCards"></div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Fluxo mensal <span>— últimos 6 meses</span></h3>
+          <div class="chart-box"><canvas id="flowChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Gastos por categoria <span>— mês atual</span></h3>
+          <div class="chart-box" id="catChartWrap"><canvas id="catChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Lançamentos recentes</h3>
+          <div id="recentList"></div>
+        </div>
+        <div class="panel">
+          <h3>Progresso das metas</h3>
+          <div id="goalsMini"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TRANSACTIONS ============ -->
+    <section class="view" data-view="transactions">
+      <div class="topbar"><div><h2>Lançamentos</h2><p class="sub">Registre receitas e despesas</p></div></div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <form id="txForm">
+          <div class="form-row">
+            <div class="field"><label>Data</label><input type="date" id="txDate" required></div>
+            <div class="field"><label>Tipo</label>
+              <select id="txType">
+                <option value="expense">Despesa</option>
+                <option value="income">Receita</option>
+              </select>
+            </div>
+            <div class="field"><label>Categoria</label><select id="txCategory"></select></div>
+            <div class="field" style="flex:2;"><label>Descrição</label><input type="text" id="txDesc" placeholder="Ex: Supermercado" required></div>
+            <div class="field"><label>Valor (R$)</label><input type="number" id="txAmount" step="0.01" min="0" placeholder="0,00" required></div>
+            <button type="submit" class="btn" id="txSubmitBtn">Adicionar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h3>Histórico</h3></div>
+        <div style="max-height:480px;overflow:auto;">
+          <table>
+            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th style="text-align:right;">Valor</th><th style="text-align:right;">Saldo</th><th></th></tr></thead>
+            <tbody id="txTableBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="txEmpty" style="display:none;">Nenhum lançamento ainda. Adicione o primeiro acima.</div>
+      </div>
+    </section>
+
+    <!-- ============ BUDGET ============ -->
+    <section class="view" data-view="budget">
+      <div class="topbar"><div><h2>Orçamento</h2><p class="sub">Defina limites mensais por categoria</p></div></div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <form id="budgetForm">
+          <div class="form-row">
+            <div class="field"><label>Categoria</label><select id="bgCategory"></select></div>
+            <div class="field"><label>Limite mensal (R$)</label><input type="number" id="bgAmount" step="0.01" min="0" placeholder="0,00" required></div>
+            <button type="submit" class="btn" id="bgSubmitBtn">Salvar limite</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>Progresso do mês atual</h3>
+        <div id="budgetList"></div>
+        <div class="empty" id="budgetEmpty" style="display:none;">Nenhum orçamento definido ainda.</div>
+      </div>
+    </section>
+
+    <!-- ============ INVESTMENTS ============ -->
+    <section class="view" data-view="investments">
+      <div class="topbar"><div><h2>Investimentos</h2><p class="sub">Acompanhe sua carteira</p></div></div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <form id="investForm">
+          <div class="form-row">
+            <div class="field" style="flex:1.4;"><label>Ativo</label><input type="text" id="invName" placeholder="Ex: Tesouro Selic, PETR4, BTC" required></div>
+            <div class="field"><label>Tipo</label>
+              <select id="invType">
+                <option>Renda Fixa</option>
+                <option>Ações</option>
+                <option>Fundos Imobiliários</option>
+                <option>Cripto</option>
+                <option>Fundos</option>
+                <option>Outros</option>
+              </select>
+            </div>
+            <div class="field"><label>Quantidade</label><input type="number" id="invQty" step="0.00000001" min="0" placeholder="0" required></div>
+            <div class="field"><label>Preço de compra (R$)</label><input type="number" id="invBuy" step="0.01" min="0" placeholder="0,00" required></div>
+            <div class="field"><label>Preço atual (R$)</label><input type="number" id="invCurrent" step="0.01" min="0" placeholder="0,00" required></div>
+            <button type="submit" class="btn" id="invSubmitBtn">Adicionar ativo</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Carteira</h3>
+          <table>
+            <thead><tr><th>Ativo</th><th>Tipo</th><th style="text-align:right;">Qtd.</th><th style="text-align:right;">Investido</th><th style="text-align:right;">Atual</th><th style="text-align:right;">Rent.</th><th></th></tr></thead>
+            <tbody id="invTableBody"></tbody>
+          </table>
+          <div class="empty" id="invEmpty" style="display:none;">Nenhum ativo cadastrado ainda.</div>
+        </div>
+        <div class="panel">
+          <h3>Alocação por tipo</h3>
+          <div class="chart-box small" id="allocChartWrap"><canvas id="allocChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GOALS ============ -->
+    <section class="view" data-view="goals">
+      <div class="topbar"><div><h2>Metas</h2><p class="sub">Objetivos financeiros e prazos</p></div></div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <form id="goalForm">
+          <div class="form-row">
+            <div class="field" style="flex:1.4;"><label>Nome da meta</label><input type="text" id="goalName" placeholder="Ex: Reserva de emergência" required></div>
+            <div class="field"><label>Valor alvo (R$)</label><input type="number" id="goalTarget" step="0.01" min="0" required></div>
+            <div class="field"><label>Valor atual (R$)</label><input type="number" id="goalCurrent" step="0.01" min="0" value="0" required></div>
+            <div class="field"><label>Prazo</label><input type="date" id="goalDeadline"></div>
+            <button type="submit" class="btn" id="goalSubmitBtn">Criar meta</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>Suas metas</h3>
+        <div id="goalsFull"></div>
+        <div class="empty" id="goalsEmpty" style="display:none;">Nenhuma meta criada ainda.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ======================================================================
+  // CONFIGURAÇÃO DO SUPABASE — cole aqui a URL e a anon key do seu projeto
+  // (Project Settings → API no painel do Supabase). A anon key é pública
+  // por design; a segurança real vem das policies de RLS no banco.
+  // ======================================================================
+  const SUPABASE_URL = 'SUA_URL_AQUI';
+  const SUPABASE_ANON_KEY = 'SUA_ANON_KEY_AQUI';
+
+  const EXPENSE_CATS = ["Moradia","Alimentação","Transporte","Saúde","Lazer","Educação","Assinaturas","Outros"];
+  const INCOME_CATS = ["Salário","Freelance","Rendimentos","Outros"];
+  const PALETTE = ["#C6A15B","#BE5A4C","#7DA089","#6E85A0","#A67C9B","#8B92AA","#C98A4B","#5E9BA3"];
+
+  const fmt = (v) => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const fmtPct = (v) => (v>=0?'+':'') + v.toFixed(1) + '%';
+  const todayISO = () => new Date().toISOString().slice(0,10);
+
+  let state = { transactions: [], budgets: [], investments: [], goals: [] };
+  let charts = {};
+  let client = null;
+  let currentUser = null;
+  let authMode = 'login'; // 'login' | 'signup'
+
+  function showSetupScreen(){
+    document.getElementById('loadingScreen').innerHTML = `
+      <div class="setup">
+        <h3>Conecte o Supabase antes de usar</h3>
+        <p>Abra este arquivo e, no topo do &lt;script&gt;, substitua:</p>
+        <ol>
+          <li><code>SUPABASE_URL</code> pela Project URL do seu projeto</li>
+          <li><code>SUPABASE_ANON_KEY</code> pela anon public key</li>
+        </ol>
+        <p>Ambas ficam em <em>Project Settings → API</em> no painel do Supabase. Depois, salve e recarregue a página.</p>
+      </div>`;
+  }
+
+  function showBanner(msg){
+    const host = document.getElementById('bannerHost');
+    const id = 'b'+Date.now();
+    host.insertAdjacentHTML('beforeend', `
+      <div class="banner" id="${id}">
+        <span>${msg}</span>
+        <button onclick="document.getElementById('${id}').remove()">✕</button>
+      </div>`);
+  }
+
+  function setSyncStatus(ok){
+    document.getElementById('syncDot').classList.toggle('err', !ok);
+    document.getElementById('syncLabel').textContent = ok ? 'Conectado ao Supabase' : 'Erro de conexão';
+  }
+
+  // ---------- AUTH ----------
+  function setAuthError(msg){
+    const el = document.getElementById('authError');
+    if(msg){ el.textContent = msg; el.style.display = 'block'; }
+    else { el.style.display = 'none'; }
+  }
+  function setAuthNote(msg){
+    const el = document.getElementById('authNote');
+    if(msg){ el.textContent = msg; el.style.display = 'block'; }
+    else { el.style.display = 'none'; }
+  }
+
+  document.getElementById('authToggleBtn').addEventListener('click', ()=>{
+    authMode = authMode==='login' ? 'signup' : 'login';
+    setAuthError(null); setAuthNote(null);
+    document.getElementById('authTitle').textContent = authMode==='login' ? 'Entrar' : 'Criar conta';
+    document.getElementById('authSub').textContent = authMode==='login' ? 'Acesse seu Livro-Razão' : 'Leva menos de um minuto';
+    document.getElementById('authSubmitBtn').textContent = authMode==='login' ? 'Entrar' : 'Criar conta';
+    document.getElementById('authToggleText').textContent = authMode==='login' ? 'Ainda não tem conta?' : 'Já tem conta?';
+    document.getElementById('authToggleBtn').textContent = authMode==='login' ? 'Criar conta' : 'Entrar';
+  });
+
+  document.getElementById('authForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    setAuthError(null); setAuthNote(null);
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const btn = document.getElementById('authSubmitBtn');
+    btn.disabled = true;
+    try{
+      if(authMode==='login'){
+        const { error } = await client.auth.signInWithPassword({ email, password });
+        if(error) throw error;
+        // onAuthStateChange cuida do resto
+      } else {
+        const { error } = await client.auth.signUp({ email, password });
+        if(error) throw error;
+        setAuthNote('Conta criada! Se a confirmação por e-mail estiver ativa no seu projeto Supabase, verifique sua caixa de entrada antes de entrar.');
+      }
+    }catch(err){
+      setAuthError(err.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : err.message);
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    await client.auth.signOut();
+  });
+
+  function showAuthScreen(){
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('authScreen').style.display = 'flex';
+  }
+
+  async function showAppForUser(user){
+    currentUser = user;
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('userEmail').textContent = user.email;
+    document.getElementById('loadingScreen').style.display = 'flex';
+    document.getElementById('loadingScreen').textContent = 'CARREGANDO O LIVRO-RAZÃO…';
+    await loadState();
+    renderAll();
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+  }
+
+  async function loadState(){
+    const [tx, inv, goals, budgets] = await Promise.all([
+      client.from('transactions').select('*').order('date'),
+      client.from('investments').select('*').order('created_at'),
+      client.from('goals').select('*').order('created_at'),
+      client.from('budgets').select('*')
+    ]);
+    const errs = [tx.error, inv.error, goals.error, budgets.error].filter(Boolean);
+    if(errs.length){
+      setSyncStatus(false);
+      showBanner('Não foi possível carregar todos os dados do Supabase. Verifique se as 4 tabelas existem e se as policies de RLS permitem acesso ao papel "anon". Detalhe: ' + errs[0].message);
+    } else {
+      setSyncStatus(true);
+    }
+    state.transactions = tx.data || [];
+    state.investments = (inv.data || []).map(r=>({ id:r.id, name:r.name, type:r.type, qty:Number(r.qty), buy:Number(r.buy_price), current:Number(r.current_price) }));
+    state.goals = (goals.data || []).map(r=>({ id:r.id, name:r.name, target:Number(r.target), current:Number(r.current), deadline:r.deadline }));
+    state.budgets = (budgets.data || []).map(r=>({ id:r.id, category:r.category, monthly_limit:Number(r.monthly_limit) }));
+  }
+
+  // ---------- NAV ----------
+  document.getElementById('tabs').addEventListener('click', (e)=>{
+    const tab = e.target.closest('.tab');
+    if(!tab) return;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const view = tab.dataset.view;
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.dataset.view===view));
+    if(view==='dashboard') renderDashboard();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', async ()=>{
+    if(!confirm('Isso apaga PERMANENTEMENTE todos os dados no Supabase (lançamentos, orçamentos, investimentos e metas). Continuar?')) return;
+    try{
+      await Promise.all(['transactions','investments','goals','budgets'].map(t =>
+        client.from(t).delete().not('id','is',null)
+      ));
+      state = { transactions: [], budgets: [], investments: [], goals: [] };
+      renderAll();
+    }catch(err){
+      showBanner('Falha ao zerar os dados: ' + err.message);
+    }
+  });
+
+  function populateCategorySelects(){
+    const txType = document.getElementById('txType').value;
+    const txCat = document.getElementById('txCategory');
+    txCat.innerHTML = (txType==='income'?INCOME_CATS:EXPENSE_CATS).map(c=>`<option>${c}</option>`).join('');
+    const bgCat = document.getElementById('bgCategory');
+    bgCat.innerHTML = EXPENSE_CATS.map(c=>`<option>${c}</option>`).join('');
+  }
+  document.getElementById('txType').addEventListener('change', populateCategorySelects);
+
+  function withBusy(btn, fn){
+    return async (e)=>{
+      e.preventDefault();
+      btn.disabled = true;
+      try{ await fn(); }
+      catch(err){ showBanner('Erro ao salvar no Supabase: ' + err.message); }
+      finally{ btn.disabled = false; }
+    };
+  }
+
+  // ---------- TRANSACTIONS ----------
+  document.getElementById('txForm').addEventListener('submit', withBusy(document.getElementById('txSubmitBtn'), async ()=>{
+    const payload = {
+      date: document.getElementById('txDate').value || todayISO(),
+      type: document.getElementById('txType').value,
+      category: document.getElementById('txCategory').value,
+      description: document.getElementById('txDesc').value.trim(),
+      amount: parseFloat(document.getElementById('txAmount').value)
+    };
+    if(!payload.description || isNaN(payload.amount) || payload.amount<=0) return;
+    payload.user_id = currentUser.id;
+    const { data, error } = await client.from('transactions').insert(payload).select().single();
+    if(error) throw error;
+    state.transactions.push(data);
+    document.getElementById('txForm').reset();
+    document.getElementById('txDate').value = todayISO();
+    populateCategorySelects();
+    renderTransactions();
+    renderDashboard();
+    renderBudget();
+  }));
+
+  async function deleteTx(id){
+    const { error } = await client.from('transactions').delete().eq('id', id);
+    if(error){ showBanner('Erro ao excluir: ' + error.message); return; }
+    state.transactions = state.transactions.filter(t=>t.id!==id);
+    renderTransactions(); renderDashboard(); renderBudget();
+  }
+
+  function renderTransactions(){
+    const sorted = [...state.transactions].sort((a,b)=> a.date.localeCompare(b.date) || 0);
+    let balance = 0;
+    const rows = sorted.map(t=>{
+      balance += t.type==='income' ? t.amount : -t.amount;
+      return {t, balance};
+    }).reverse();
+    const body = document.getElementById('txTableBody');
+    document.getElementById('txEmpty').style.display = rows.length? 'none':'block';
+    body.innerHTML = rows.map(({t,balance})=>`
+      <tr>
+        <td class="mono">${formatDate(t.date)}</td>
+        <td>${escapeHtml(t.description)}</td>
+        <td><span class="tag">${t.category}</span></td>
+        <td><span class="badge-type ${t.type==='income'?'badge-income':'badge-expense'}">${t.type==='income'?'Receita':'Despesa'}</span></td>
+        <td class="amt" style="color:${t.type==='income'?'var(--credit)':'var(--debit)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</td>
+        <td class="amt" style="color:${balance<0?'var(--debit)':'var(--paper-dim)'}">${fmt(balance)}</td>
+        <td><button class="row-del" data-id="${t.id}" title="Excluir">✕</button></td>
+      </tr>`).join('');
+    body.querySelectorAll('.row-del').forEach(b=> b.addEventListener('click', ()=> deleteTx(b.dataset.id)));
+  }
+
+  // ---------- BUDGET ----------
+  document.getElementById('budgetForm').addEventListener('submit', withBusy(document.getElementById('bgSubmitBtn'), async ()=>{
+    const cat = document.getElementById('bgCategory').value;
+    const amt = parseFloat(document.getElementById('bgAmount').value);
+    if(isNaN(amt) || amt<=0) return;
+    const existing = state.budgets.find(b=>b.category===cat);
+    if(existing){
+      const { error } = await client.from('budgets').update({ monthly_limit: amt }).eq('id', existing.id);
+      if(error) throw error;
+      existing.monthly_limit = amt;
+    } else {
+      const { data, error } = await client.from('budgets').insert({ category: cat, monthly_limit: amt, user_id: currentUser.id }).select().single();
+      if(error) throw error;
+      state.budgets.push({ id:data.id, category:data.category, monthly_limit:Number(data.monthly_limit) });
+    }
+    document.getElementById('budgetForm').reset();
+    renderBudget();
+  }));
+
+  function currentMonthSpend(cat){
+    const ym = todayISO().slice(0,7);
+    return state.transactions
+      .filter(t=>t.type==='expense' && t.category===cat && t.date.slice(0,7)===ym)
+      .reduce((s,t)=>s+t.amount,0);
+  }
+
+  function renderBudget(){
+    document.getElementById('budgetEmpty').style.display = state.budgets.length? 'none':'block';
+    document.getElementById('budgetList').innerHTML = state.budgets.map(b=>{
+      const spent = currentMonthSpend(b.category);
+      const pct = Math.min(100, (spent/b.monthly_limit)*100 || 0);
+      const over = spent > b.monthly_limit;
+      return `
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;">
+            <span>${b.category}</span>
+            <span class="mono" style="color:${over?'var(--debit)':'var(--muted)'}">${fmt(spent)} / ${fmt(b.monthly_limit)}</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+        </div>`;
+    }).join('');
+  }
+
+  // ---------- INVESTMENTS ----------
+  document.getElementById('investForm').addEventListener('submit', withBusy(document.getElementById('invSubmitBtn'), async ()=>{
+    const local = {
+      name: document.getElementById('invName').value.trim(),
+      type: document.getElementById('invType').value,
+      qty: parseFloat(document.getElementById('invQty').value),
+      buy: parseFloat(document.getElementById('invBuy').value),
+      current: parseFloat(document.getElementById('invCurrent').value)
+    };
+    if(!local.name || [local.qty,local.buy,local.current].some(v=>isNaN(v)||v<0)) return;
+    const payload = { name: local.name, type: local.type, qty: local.qty, buy_price: local.buy, current_price: local.current, user_id: currentUser.id };
+    const { data, error } = await client.from('investments').insert(payload).select().single();
+    if(error) throw error;
+    state.investments.push({ id:data.id, name:data.name, type:data.type, qty:Number(data.qty), buy:Number(data.buy_price), current:Number(data.current_price) });
+    document.getElementById('investForm').reset();
+    renderInvestments();
+    renderDashboard();
+  }));
+
+  async function deleteInv(id){
+    const { error } = await client.from('investments').delete().eq('id', id);
+    if(error){ showBanner('Erro ao excluir: ' + error.message); return; }
+    state.investments = state.investments.filter(i=>i.id!==id);
+    renderInvestments(); renderDashboard();
+  }
+
+  function renderInvestments(){
+    document.getElementById('invEmpty').style.display = state.investments.length? 'none':'block';
+    document.getElementById('invTableBody').innerHTML = state.investments.map(inv=>{
+      const invested = inv.qty*inv.buy;
+      const current = inv.qty*inv.current;
+      const gainPct = invested>0 ? ((current-invested)/invested)*100 : 0;
+      return `
+        <tr>
+          <td>${escapeHtml(inv.name)}</td>
+          <td><span class="tag">${inv.type}</span></td>
+          <td class="amt mono">${inv.qty}</td>
+          <td class="amt mono">${fmt(invested)}</td>
+          <td class="amt mono">${fmt(current)}</td>
+          <td class="amt invest-gain" style="color:${gainPct>=0?'var(--credit)':'var(--debit)'}">${fmtPct(gainPct)}</td>
+          <td><button class="row-del" data-id="${inv.id}" title="Excluir">✕</button></td>
+        </tr>`;
+    }).join('');
+    document.querySelectorAll('#invTableBody .row-del').forEach(b=> b.addEventListener('click', ()=> deleteInv(b.dataset.id)));
+
+    const byType = {};
+    state.investments.forEach(inv=>{ byType[inv.type] = (byType[inv.type]||0) + inv.qty*inv.current; });
+    const labels = Object.keys(byType);
+    const wrap = document.getElementById('allocChartWrap');
+    if(!labels.length){
+      wrap.innerHTML = '<div class="empty">Sem dados para exibir.</div>';
+    } else {
+      if(!wrap.querySelector('canvas')) wrap.innerHTML = '<canvas id="allocChart"></canvas>';
+      const ctx = document.getElementById('allocChart');
+      if(charts.alloc) charts.alloc.destroy();
+      charts.alloc = new Chart(ctx, {
+        type:'doughnut',
+        data:{ labels, datasets:[{ data:labels.map(l=>byType[l]), backgroundColor:PALETTE, borderColor:'#171D2C', borderWidth:2 }] },
+        options:{ plugins:{ legend:{ position:'bottom', labels:{ color:'#8B92AA', font:{family:'IBM Plex Sans', size:11}, boxWidth:10, padding:12 } } }, cutout:'62%', maintainAspectRatio:false }
+      });
+    }
+  }
+
+  // ---------- GOALS ----------
+  document.getElementById('goalForm').addEventListener('submit', withBusy(document.getElementById('goalSubmitBtn'), async ()=>{
+    const payload = {
+      name: document.getElementById('goalName').value.trim(),
+      target: parseFloat(document.getElementById('goalTarget').value),
+      current: parseFloat(document.getElementById('goalCurrent').value)||0,
+      deadline: document.getElementById('goalDeadline').value || null
+    };
+    if(!payload.name || isNaN(payload.target) || payload.target<=0) return;
+    payload.user_id = currentUser.id;
+    const { data, error } = await client.from('goals').insert(payload).select().single();
+    if(error) throw error;
+    state.goals.push({ id:data.id, name:data.name, target:Number(data.target), current:Number(data.current), deadline:data.deadline });
+    document.getElementById('goalForm').reset();
+    renderGoals();
+    renderDashboard();
+  }));
+
+  async function deleteGoal(id){
+    const { error } = await client.from('goals').delete().eq('id', id);
+    if(error){ showBanner('Erro ao excluir: ' + error.message); return; }
+    state.goals = state.goals.filter(g=>g.id!==id);
+    renderGoals(); renderDashboard();
+  }
+
+  function goalMeta(g){
+    const pct = Math.min(100, (g.current/g.target)*100 || 0);
+    let daysLeft = null;
+    if(g.deadline){
+      daysLeft = Math.ceil((new Date(g.deadline) - new Date()) / 86400000);
+    }
+    return {pct, daysLeft};
+  }
+
+  function renderGoals(){
+    document.getElementById('goalsEmpty').style.display = state.goals.length? 'none':'block';
+    document.getElementById('goalsFull').innerHTML = state.goals.map(g=>{
+      const {pct, daysLeft} = goalMeta(g);
+      return `
+        <div style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:14px;">${escapeHtml(g.name)}</strong>
+            <button class="row-del" data-id="${g.id}" title="Excluir">✕</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin:4px 0 2px;">
+            <span class="mono">${fmt(g.current)} de ${fmt(g.target)}</span>
+            <span>${daysLeft!==null ? (daysLeft>=0? daysLeft+' dias restantes' : 'prazo vencido') : 'sem prazo'}</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>`;
+    }).join('');
+    document.querySelectorAll('#goalsFull .row-del').forEach(b=> b.addEventListener('click', ()=> deleteGoal(b.dataset.id)));
+  }
+
+  // ---------- DASHBOARD ----------
+  function monthKey(d){ return d.slice(0,7); }
+  function lastNMonths(n){
+    const out=[];
+    const d = new Date();
+    for(let i=n-1;i>=0;i--){
+      const dt = new Date(d.getFullYear(), d.getMonth()-i, 1);
+      out.push(dt.toISOString().slice(0,7));
+    }
+    return out;
+  }
+
+  function renderDashboard(){
+    const ym = todayISO().slice(0,7);
+    const txThisMonth = state.transactions.filter(t=>monthKey(t.date)===ym);
+    const income = txThisMonth.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const expense = txThisMonth.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const totalIncomeAll = state.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const totalExpenseAll = state.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const cashBalance = totalIncomeAll - totalExpenseAll;
+    const investCurrent = state.investments.reduce((s,i)=>s+i.qty*i.current,0);
+    const netWorth = cashBalance + investCurrent;
+    const savingsRate = income>0 ? ((income-expense)/income)*100 : 0;
+
+    document.getElementById('dashCards').innerHTML = `
+      <div class="card"><div class="label">Saldo em caixa</div><div class="value num">${fmt(cashBalance)}</div></div>
+      <div class="card"><div class="label">Receitas do mês</div><div class="value num" style="color:var(--credit)">${fmt(income)}</div></div>
+      <div class="card"><div class="label">Despesas do mês</div><div class="value num" style="color:var(--debit)">${fmt(expense)}</div></div>
+      <div class="card"><div class="label">Taxa de poupança</div><div class="value num">${fmtPct(savingsRate)}</div>
+        <div class="delta ${savingsRate>=0?'up':'down'}">${savingsRate>=0?'Saldo positivo':'Gastando mais do que ganha'}</div></div>
+    `;
+
+    document.getElementById('stampValue').textContent = fmt(netWorth).replace('R$\u00A0','R$ ');
+    const arrow = income-expense >= 0 ? '▲ mês positivo' : '▼ mês negativo';
+    document.getElementById('stampArrow').textContent = arrow;
+    const stampColor = netWorth>=0 ? 'var(--brass)' : 'var(--debit)';
+    document.querySelectorAll('#stampSvg .stamp-ring, #stampSvg .stamp-text').forEach(el=>{
+      if(el.tagName==='circle') el.setAttribute('stroke', stampColor);
+      else el.setAttribute('fill', stampColor);
+    });
+
+    const months = lastNMonths(6);
+    const incByM = months.map(m => state.transactions.filter(t=>t.type==='income'&&monthKey(t.date)===m).reduce((s,t)=>s+t.amount,0));
+    const expByM = months.map(m => state.transactions.filter(t=>t.type==='expense'&&monthKey(t.date)===m).reduce((s,t)=>s+t.amount,0));
+    const labels = months.map(m=>{
+      const [y,mo] = m.split('-');
+      return new Date(y,mo-1,1).toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+    });
+    if(charts.flow) charts.flow.destroy();
+    charts.flow = new Chart(document.getElementById('flowChart'), {
+      type:'bar',
+      data:{ labels, datasets:[
+        {label:'Receitas', data:incByM, backgroundColor:'#7DA089', borderRadius:4},
+        {label:'Despesas', data:expByM, backgroundColor:'#BE5A4C', borderRadius:4}
+      ]},
+      options:{
+        maintainAspectRatio:false,
+        scales:{
+          x:{ ticks:{color:'#8B92AA', font:{family:'IBM Plex Mono',size:10}}, grid:{display:false} },
+          y:{ ticks:{color:'#8B92AA', font:{family:'IBM Plex Mono',size:10}}, grid:{color:'#20263A'} }
+        },
+        plugins:{ legend:{ labels:{ color:'#8B92AA', font:{family:'IBM Plex Sans',size:11} } } }
+      }
+    });
+
+    const byCat = {};
+    txThisMonth.filter(t=>t.type==='expense').forEach(t=>{ byCat[t.category] = (byCat[t.category]||0)+t.amount; });
+    const catLabels = Object.keys(byCat);
+    const catWrap = document.getElementById('catChartWrap');
+    if(!catLabels.length){
+      catWrap.innerHTML = '<div class="empty">Sem despesas registradas neste mês.</div>';
+    } else {
+      if(!catWrap.querySelector('canvas')) catWrap.innerHTML = '<canvas id="catChart"></canvas>';
+      if(charts.cat) charts.cat.destroy();
+      charts.cat = new Chart(document.getElementById('catChart'), {
+        type:'doughnut',
+        data:{ labels:catLabels, datasets:[{ data:catLabels.map(c=>byCat[c]), backgroundColor:PALETTE, borderColor:'#171D2C', borderWidth:2 }]},
+        options:{ maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{ position:'bottom', labels:{ color:'#8B92AA', font:{family:'IBM Plex Sans',size:11}, boxWidth:10, padding:10 } } } }
+      });
+    }
+
+    const recent = [...state.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+    document.getElementById('recentList').innerHTML = recent.length ? recent.map(t=>`
+      <div class="list-item">
+        <div>
+          <div style="font-size:13.5px;">${escapeHtml(t.description)}</div>
+          <div style="font-size:11.5px;color:var(--muted);">${t.category} · ${formatDate(t.date)}</div>
+        </div>
+        <div class="mono" style="color:${t.type==='income'?'var(--credit)':'var(--debit)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+      </div>`).join('') : '<div class="empty">Nenhum lançamento ainda.</div>';
+
+    document.getElementById('goalsMini').innerHTML = state.goals.length ? state.goals.slice(0,4).map(g=>{
+      const {pct} = goalMeta(g);
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span>${escapeHtml(g.name)}</span><span class="mono">${pct.toFixed(0)}%</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('') : '<div class="empty">Crie metas na aba Metas.</div>';
+  }
+
+  function renderAll(){
+    populateCategorySelects();
+    document.getElementById('txDate').value = todayISO();
+    renderTransactions();
+    renderBudget();
+    renderInvestments();
+    renderGoals();
+    renderDashboard();
+  }
+
+  function formatDate(iso){
+    const [y,m,d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  (async function init(){
+    if(!SUPABASE_URL || SUPABASE_URL==='SUA_URL_AQUI' || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY==='SUA_ANON_KEY_AQUI'){
+      showSetupScreen();
+      return;
+    }
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { data: { session } } = await client.auth.getSession();
+    if(session && session.user){
+      await showAppForUser(session.user);
+    } else {
+      showAuthScreen();
+    }
+
+    client.auth.onAuthStateChange(async (event, session) => {
+      if(event === 'SIGNED_IN' && session && session.user){
+        if(!currentUser || currentUser.id !== session.user.id){
+          await showAppForUser(session.user);
+        }
+      } else if(event === 'SIGNED_OUT'){
+        currentUser = null;
+        state = { transactions: [], budgets: [], investments: [], goals: [] };
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('authForm').reset();
+        setAuthError(null); setAuthNote(null);
+        showAuthScreen();
+      }
+    });
+  })();
+
+})();
+</script>
+</body>
+</html>
